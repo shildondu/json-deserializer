@@ -30,6 +30,7 @@ class JsonLexer {
     private fun tokenize(bufferedReader: BufferedReader): List<Token> {
         val charBuffer = CharBuffer.allocate(128)
         var state = DfaState.INITIAL
+        var line = 1
         while (bufferedReader.read(charBuffer) != -1) {
             charBuffer.flip()
             while (charBuffer.hasRemaining()) {
@@ -39,12 +40,16 @@ class JsonLexer {
                 state = nextState
 
                 if (!currentState.isSame(nextState)) {
+                    currentToken.line = line
                     currentToken.setType(currentState)
                     extractToken()
                 }
 
                 if (nextState != DfaState.INITIAL) {
                     currentText.append(char)
+                }
+                if (char.isLineBreak()) {
+                    line++
                 }
             }
             charBuffer.clear()
@@ -126,3 +131,5 @@ data class Token(
     }
 
 }
+
+fun Char.isLineBreak() = this == '\n' || this == '\r'
