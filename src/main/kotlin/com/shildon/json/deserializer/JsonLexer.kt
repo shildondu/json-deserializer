@@ -40,13 +40,12 @@ class JsonLexer {
                 state = nextState
 
                 if (!currentState.isSame(nextState)) {
-                    currentToken.line = line
-                    currentToken.setType(currentState)
+                    applyToken(currentState, line)
                     extractToken()
                 }
 
                 if (nextState != DfaState.INITIAL) {
-                    currentText.append(char)
+                    appendText(char)
                 }
                 if (char.isLineBreak()) {
                     line++
@@ -60,6 +59,15 @@ class JsonLexer {
     private fun throwException(char: Char): Nothing {
         extractToken()
         throw RuntimeException("illegal json string in token: ${tokens.last().text + char}, line: ${tokens.last().line}")
+    }
+
+    private fun appendText(char: Char) {
+        this.currentText.append(char)
+    }
+
+    private fun applyToken(dfaState: DfaState, line: Int) {
+        this.currentToken.setType(dfaState)
+        this.currentToken.line = line
     }
 
     private fun extractToken() {
