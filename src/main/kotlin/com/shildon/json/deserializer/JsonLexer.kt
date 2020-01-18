@@ -7,7 +7,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 /**
- * a simple json lexer
+ * a simple json lexer.
  *
  * @author shildon
  */
