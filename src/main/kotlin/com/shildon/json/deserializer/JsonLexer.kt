@@ -44,6 +44,9 @@ class JsonLexer {
                     extractToken()
                 }
 
+                if (nextState == DfaState.ERROR) {
+                    throwException()
+                }
                 if (nextState != DfaState.INITIAL) {
                     appendText(char)
                 }
@@ -56,9 +59,8 @@ class JsonLexer {
         return tokens
     }
 
-    private fun throwException(char: Char): Nothing {
-        extractToken()
-        throw RuntimeException("illegal json string in token: ${tokens.last().text + char}, line: ${tokens.last().line}")
+    private fun throwException(): Nothing {
+        throw RuntimeException("illegal json string in token: ${tokens.last().text}, line: ${tokens.last().line}")
     }
 
     private fun appendText(char: Char) {
