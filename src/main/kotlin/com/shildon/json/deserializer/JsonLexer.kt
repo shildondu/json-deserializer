@@ -5,6 +5,7 @@ import java.io.StringReader
 import java.nio.CharBuffer
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 
 /**
  * a simple json lexer.
@@ -17,17 +18,17 @@ class JsonLexer {
     private val currentText = StringBuilder()
     private var currentToken = Token()
 
-    fun tokenizeFromString(json: String): List<Token> {
+    fun tokenizeFromString(json: String): TokenReader {
         val bufferedReader = BufferedReader(StringReader(json))
         return tokenize(bufferedReader)
     }
 
-    fun tokenizeFromFile(path: String): List<Token> {
+    fun tokenizeFromFile(path: String): TokenReader {
         val bufferedReader = Files.newBufferedReader(Paths.get(path))
         return tokenize(bufferedReader)
     }
 
-    private fun tokenize(bufferedReader: BufferedReader): List<Token> {
+    private fun tokenize(bufferedReader: BufferedReader): TokenReader {
         val charBuffer = CharBuffer.allocate(128)
         var state = DfaState.INITIAL
         var line = 1
@@ -56,7 +57,9 @@ class JsonLexer {
             }
             charBuffer.clear()
         }
-        return tokens
+        applyToken(state, line)
+        extractToken()
+        return TokenReader(LinkedList(tokens))
     }
 
     private fun throwException(): Nothing {
@@ -141,5 +144,7 @@ data class Token(
     }
 
 }
+
+class TokenReader(tokens: Queue<Token>) : Queue<Token> by tokens
 
 fun Char.isLineBreak() = this == '\n' || this == '\r'

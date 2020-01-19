@@ -19,5 +19,7 @@ fun main() {
             "sign": "1f153c9432bcee6d6797145559c47c54"
         }
     """.trimIndent()
-    println(JsonLexer().tokenizeFromString(json))
+    val tokenReader = JsonLexer().tokenizeFromString(json)
+    val astNode = JsonParser().parse(tokenReader)
+    println(astNode)
 }

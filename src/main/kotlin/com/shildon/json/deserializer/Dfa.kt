@@ -2,6 +2,11 @@ package com.shildon.json.deserializer
 
 import java.util.function.Predicate
 
+/**
+ * DFA state of json
+ *
+ * @author shildon
+ */
 enum class DfaState {
     INITIAL,
     ERROR,
@@ -37,7 +42,14 @@ enum class DfaState {
 
     fun isSame(dfaState: DfaState): Boolean {
         val stringLiterals = listOf(STRING_LITERAL_BEGIN, STRING_LITERAL, STRING_LITERAL_END)
-        return this == dfaState || (stringLiterals.contains(this) && stringLiterals.contains(dfaState))
+        val trueLiterals = listOf(TRUE_LITERAL_1, TRUE_LITERAL_2, TRUE_LITERAL_3, TRUE_LITERAL_4)
+        val falseLiterals = listOf(FALSE_LITERAL_1, FALSE_LITERAL_2, FALSE_LITERAL_3, FALSE_LITERAL_4, FALSE_LITERAL_5)
+        val nullLiterals = listOf(NULL_LITERAL_1, NULL_LITERAL_2, NULL_LITERAL_3, NULL_LITERAL_4)
+        return this == dfaState
+                || (stringLiterals.contains(this) && stringLiterals.contains(dfaState))
+                || (trueLiterals.contains(this) && trueLiterals.contains(dfaState))
+                || (falseLiterals.contains(this) && falseLiterals.contains(dfaState))
+                || (nullLiterals.contains(this) && nullLiterals.contains(dfaState))
     }
 }
 

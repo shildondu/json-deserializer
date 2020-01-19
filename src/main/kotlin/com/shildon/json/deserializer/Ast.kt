@@ -7,12 +7,17 @@ data class AstNode(
     var children: MutableList<AstNode> = mutableListOf()
 ) {
 
-    fun setParent() {
+    fun link() {
         children.takeIf { !it.isNullOrEmpty() }
             ?.also {
                 it.forEach { it.parent = this }
             }
     }
+
+    override fun toString(): String {
+        return "AstNode(type=$type, text='$text', children=$children)"
+    }
+
 
 }
 

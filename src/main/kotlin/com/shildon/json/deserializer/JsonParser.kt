@@ -6,83 +6,80 @@ import com.shildon.json.deserializer.Token.Type.*
  * a simple json parser.
  *
  * json -> object | array
- * object -> '{' object_members '}'
- * object_members -> key_value object_member | eps
- * object_members' -> ',' key_value object_members' | eps
- * array -> '[' array_members ']'
- * array_members -> value array_member | eps
- * array_members' -> ',' value array_members' | eps
+ * object -> '{' object_members? '}'
+ * object_members -> key_value object_member? | eps
+ * object_members' -> ',' key_value object_members'? | eps
+ * array -> '[' array_members? ']'
+ * array_members -> value array_member? | eps
+ * array_members' -> ',' value array_members'? | eps
  * key_value -> string ':' value
- * value -> string | number | true | false | object | array | null
+ * value -> string | number | true | false | object | array | null | esp
  *
  * @author shildon
  */
 class JsonParser {
 
-    fun parse(tokens: MutableList<Token>): AstNode = json(tokens)
+    fun parse(tokenReader: TokenReader): AstNode = json(tokenReader)
 
     /**
      * json -> object | array
      */
-    private fun json(tokens: MutableList<Token>): AstNode {
+    private fun json(tokenReader: TokenReader): AstNode {
         val astJsonRootNode = AstNode(AstNodeType.JSON, "root")
 
-        val astObjectNode = `object`(tokens)
-            .takeIf { astObjectNode -> astObjectNode != null }
+        val astObjectNode = `object`(tokenReader)
             ?.also { astObjectNode -> astJsonRootNode.children.add(astObjectNode) }
 
-        // TODO need add token back
-
         if (astObjectNode == null) {
-            array(tokens)
-                .takeIfOrThrow(
-                    { astArrayNode -> astArrayNode != null },
-                    { throw RuntimeException("parse error") }
-                )
+            array(tokenReader)
                 ?.also { astArrayNode -> astJsonRootNode.children.add(astArrayNode) }
+                ?: throw RuntimeException("parse error")
         }
 
-        astJsonRootNode.setParent()
+        astJsonRootNode.link()
         return astJsonRootNode
     }
 
     /**
-     * object -> '{' object_members '}'
+     * object -> '{' object_members? '}'
      */
-    private fun `object`(tokens: MutableList<Token>): AstNode? =
-        tokens.removeAt(0)
-            .takeIf { it.type == LEFT_BRACKET }
+    private fun `object`(tokenReader: TokenReader): AstNode? =
+        tokenReader
+            .peek()
+            ?.takeIf { it.type == LEFT_BRACE }
             ?.let {
+                tokenReader.poll()
                 val astObjectNode = AstNode(AstNodeType.OBJECT, "object")
 
-                val astLeftBracketNode = AstNode(AstNodeType.TERMINAL, it.text)
-                astObjectNode.children.add(astLeftBracketNode)
+                val astLeftBraceNode = AstNode(AstNodeType.TERMINAL, it.text)
+                astObjectNode.children.add(astLeftBraceNode)
 
-                objectMembers(tokens)
-                    .takeIf { astObjectMembersNode -> astObjectMembersNode != null }
+                objectMembers(tokenReader)
                     ?.also { astObjectMembersNode -> astObjectNode.children.add(astObjectMembersNode) }
 
-                tokens.removeAt(0)
-                    .takeIfOrThrow(
-                        { token -> token.type == RIGHT_BRACKET },
+                tokenReader
+                    .peek()
+                    ?.takeIfOrThrow(
+                        { token -> token.type == RIGHT_BRACE },
                         { token -> RuntimeException("parse error in token: $token") }
                     )
-                    ?.also {
-                        val astRightBracketNode = AstNode(AstNodeType.TERMINAL, it.text)
-                        astObjectNode.children.add(astRightBracketNode)
+                    ?.also { token ->
+                        tokenReader.poll()
+                        val astRightBraceNode = AstNode(AstNodeType.TERMINAL, token.text)
+                        astObjectNode.children.add(astRightBraceNode)
                     }
 
-                astObjectNode.setParent()
+                astObjectNode.link()
                 astObjectNode
             }
 
     /**
-     * object_members -> key_value object_members' | eps
+     * object_members -> key_value object_members'? | eps
      */
-    private fun objectMembers(tokens: MutableList<Token>): AstNode? =
-        tokens
+    private fun objectMembers(tokenReader: TokenReader): AstNode? =
+        tokenReader
             .takeIfLet {
-                val astKeyValueNode = keyValue(tokens)
+                val astKeyValueNode = keyValue(tokenReader)
                 (astKeyValueNode != null) to astKeyValueNode
             }
             ?.let { astKeyValueNode ->
@@ -90,87 +87,78 @@ class JsonParser {
 
                 astObjectMembersNode.children.add(astKeyValueNode)
 
-                objectMembers2(tokens)
-                    .takeIfOrThrow(
-                        { astObjectMembers2Node -> astObjectMembers2Node != null },
-                        { RuntimeException("parse error") }
-                    )
+                objectMembers2(tokenReader)
                     ?.also { astObjectMembers2Node -> astObjectMembersNode.children.add(astObjectMembers2Node) }
 
-                astObjectMembersNode.setParent()
+                astObjectMembersNode.link()
                 astObjectMembersNode
             }
 
     /**
-     * object_members' -> ',' key_value object_members' | eps
+     * object_members' -> ',' key_value object_members'? | eps
      */
-    private fun objectMembers2(tokens: MutableList<Token>): AstNode? =
-        tokens.removeAt(0)
-            .takeIf { it.type == COMMA }
+    private fun objectMembers2(tokenReader: TokenReader): AstNode? =
+        tokenReader
+            .peek()
+            ?.takeIf { it.type == COMMA }
             ?.let {
+                tokenReader.poll()
                 val astObjectMembers2Node = AstNode(AstNodeType.OBJECT_MEMBERS2, "object_members'")
 
                 val astCommaNode = AstNode(AstNodeType.TERMINAL, it.text)
                 astObjectMembers2Node.children.add(astCommaNode)
 
-                keyValue(tokens)
-                    .takeIfOrThrow(
-                        { astKeyValueNode -> astKeyValueNode != null },
-                        { throw RuntimeException("parse error") }
-                    )
+                keyValue(tokenReader)
                     ?.also { astKeyValueNode -> astObjectMembers2Node.children.add(astKeyValueNode) }
+                    ?: throw RuntimeException("parse error")
 
-                objectMembers2(tokens)
-                    .takeIfOrThrow(
-                        { astObjectMembers2ChildNode -> astObjectMembers2ChildNode != null },
-                        { throw RuntimeException("parse error") }
-                    )
+                objectMembers2(tokenReader)
                     ?.also { astObjectMembers2ChildNode -> astObjectMembers2Node.children.add(astObjectMembers2ChildNode) }
 
-                astObjectMembers2Node.setParent()
+                astObjectMembers2Node.link()
                 astObjectMembers2Node
             }
 
     /**
-     * array -> '[' array_members ']'
+     * array -> '[' array_members? ']'
      */
-    private fun array(tokens: MutableList<Token>): AstNode? =
-        tokens.removeAt(0)
-            .takeIf { it.type == LEFT_BRACE }
+    private fun array(tokenReader: TokenReader): AstNode? =
+        tokenReader
+            .peek()
+            .takeIf { it.type == LEFT_BRACKET }
             ?.let {
+                tokenReader.poll()
                 val astArrayNode = AstNode(AstNodeType.ARRAY, "array")
 
-                val astLeftBraceNode = AstNode(AstNodeType.TERMINAL, it.text)
-                astArrayNode.children.add(astLeftBraceNode)
+                val astLeftBracketNode = AstNode(AstNodeType.TERMINAL, it.text)
+                astArrayNode.children.add(astLeftBracketNode)
 
-                arrayMembers(tokens)
-                    .takeIfOrThrow(
-                        { astArrayMembersNode -> astArrayMembersNode != null },
-                        { throw RuntimeException("parse error") }
-                    )
+                arrayMembers(tokenReader)
                     ?.also { astArrayMembersNode -> astArrayNode.children.add(astArrayMembersNode) }
 
-                tokens.removeAt(0)
+                tokenReader
+                    .peek()
                     .takeIfOrThrow(
-                        { token -> token.type == RIGHT_BRACE },
+                        { token -> token.type == RIGHT_BRACKET },
                         { throw  RuntimeException("parse error") }
                     )
                     ?.also { token ->
+                        tokenReader.poll()
                         val astRightBraceNode = AstNode(AstNodeType.TERMINAL, token.text)
                         astArrayNode.children.add(astRightBraceNode)
                     }
 
-                astArrayNode.setParent()
+                astArrayNode.link()
                 astArrayNode
             }
 
     /**
-     * array_members -> value array_members' | eps
+     * array_members -> value array_members'? | eps
      */
-    private fun arrayMembers(tokens: MutableList<Token>): AstNode? =
-        tokens
+    private fun arrayMembers(tokenReader: TokenReader): AstNode? =
+        tokenReader
             .takeIfLet {
-                val astValueNode = value(tokens)
+                val astValueNode = value(tokenReader)
                 (astValueNode != null) to astValueNode
             }
             ?.let { astValueNode ->
@@ -178,98 +166,90 @@ class JsonParser {
 
                 astArrayMembersNode.children.add(astValueNode)
 
-                arrayMembers2(tokens)
-                    .takeIfOrThrow(
-                        { astArrayMembers2Node -> astArrayMembers2Node != null },
-                        { throw RuntimeException("parse error") }
-                    )
+                arrayMembers2(tokenReader)
                     ?.also { astArrayMembers2Node -> astArrayMembersNode.children.add(astArrayMembers2Node) }
 
-                astArrayMembersNode.setParent()
+                astArrayMembersNode.link()
                 astArrayMembersNode
             }
 
     /**
-     * array_members' -> ',' value array_members' | eps
+     * array_members' -> ',' value array_members'? | eps
      */
-    private fun arrayMembers2(tokens: MutableList<Token>): AstNode? =
-        tokens.removeAt(0)
+    private fun arrayMembers2(tokenReader: TokenReader): AstNode? =
+        tokenReader
+            .peek()
             .takeIf { it.type == COMMA }
             ?.let {
+                tokenReader.poll()
                 val astArrayMembers2Node = AstNode(AstNodeType.ARRAY_MEMBERS2, "array_members'")
 
                 val astCommaNode = AstNode(AstNodeType.TERMINAL, it.text)
                 astArrayMembers2Node.children.add(astCommaNode)
 
-                value(tokens)
-                    .takeIfOrThrow(
-                        { astValueNode -> astValueNode != null },
-                        { throw RuntimeException("parse error") }
-                    )
+                value(tokenReader)
                     ?.also { astValueNode -> astArrayMembers2Node.children.add(astValueNode) }
+                    ?: throw RuntimeException("parse error")
 
-                arrayMembers2(tokens)
-                    .takeIfOrThrow(
-                        { astArrayMembers2ChildNode -> astArrayMembers2ChildNode != null },
-                        { throw RuntimeException("parse error") }
-                    )
+                arrayMembers2(tokenReader)
                     ?.also { astArrayMembers2ChildNode -> astArrayMembers2Node.children.add(astArrayMembers2ChildNode) }
 
-                astArrayMembers2Node.setParent()
+                astArrayMembers2Node.link()
                 astArrayMembers2Node
             }
 
     /**
      * key_value -> string ':' value
      */
-    private fun keyValue(tokens: MutableList<Token>): AstNode? =
-        tokens.removeAt(0)
+    private fun keyValue(tokenReader: TokenReader): AstNode? =
+        tokenReader
+            .peek()
             .takeIf { it.type == STRING_LITERAL }
             ?.let {
+                tokenReader.poll()
                 val astKeyValueNode = AstNode(AstNodeType.KEY_VALUE, "key_value")
 
                 val astStringNode = AstNode(AstNodeType.TERMINAL, it.text)
                 astKeyValueNode.children.add(astStringNode)
 
-                tokens.removeAt(0)
+                tokenReader
+                    .peek()
                     .takeIfOrThrow(
                         { token -> token.type == COLON },
                         { throw RuntimeException("parse error") }
                     )
                     ?.also { token ->
+                        tokenReader.poll()
                         val astColonNode = AstNode(AstNodeType.TERMINAL, token.text)
                         astKeyValueNode.children.add(astColonNode)
                     }
 
-                value(tokens)
-                    .takeIfOrThrow(
-                        { astValueNode -> astValueNode != null },
-                        { throw RuntimeException("parse error") }
-                    )
+                value(tokenReader)
                     ?.also { astValueNode -> astKeyValueNode.children.add(astValueNode) }
+                    ?: throw RuntimeException("parse error")
 
-                astKeyValueNode.setParent()
+                astKeyValueNode.link()
                 astKeyValueNode
             }
 
     /**
-     * value -> string | number | true | false | object | array | null
+     * value -> string | number | true | false | object | array | null | esp
      */
-    private fun value(tokens: MutableList<Token>): AstNode? {
-        val token = tokens.removeAt(0)
-        val astValueNode = AstNode(AstNodeType.VALUE, "value")
-        val astValueChildNode = if (token.type == STRING_LITERAL || token.type == NULL_LITERAL || token.type == BOOLEAN_LITERAL || token.type == NULL_LITERAL) {
-            AstNode(AstNodeType.TERMINAL, token.text)
-        } else {
-            // TODO token need add back
-            tokens.add(0, token)
-            `object`(tokens)
-                ?: array(tokens)
-                ?: throw RuntimeException("parse error")
-        }
-        astValueNode.children.add(astValueChildNode)
+    private fun value(tokenReader: TokenReader): AstNode? {
+        val token = tokenReader.peek()
+        val astValueChildNode =
+            (if (token.type == STRING_LITERAL || token.type == NUMBER_LITERAL || token.type == BOOLEAN_LITERAL || token.type == NULL_LITERAL) {
+                tokenReader.poll()
+                AstNode(AstNodeType.TERMINAL, token.text)
+            } else {
+                `object`(tokenReader)
+                    ?: array(tokenReader)
+            })
+                ?: return null
 
-        astValueNode.setParent()
+        val astValueNode = AstNode(AstNodeType.VALUE, "value")
+        astValueChildNode.children.add(astValueChildNode)
+        astValueNode.link()
         return astValueNode
     }
 
