@@ -2,7 +2,8 @@ package com.shildon.json.deserializer
 
 fun main() {
     val json = """
-        {"api": "com.yy.onepiece.alliance.product.query",
+        {
+            "api": "com.yy.onepiece.alliance.product.query",
             "code": "SUCCESS",
             "message": "成功",
             "data": {
