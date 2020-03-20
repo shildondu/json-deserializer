@@ -76,6 +76,7 @@ object Dfa {
 
             // from left brace state
             DfaState.LEFT_BRACE meet { it == '"' } go DfaState.STRING_LITERAL_BEGIN,
+            DfaState.LEFT_BRACE meet { it == '}' } go DfaState.RIGHT_BRACE,
             DfaState.LEFT_BRACE meet { it.isWhitespace() } go DfaState.INITIAL,
 
             // from right brace state
