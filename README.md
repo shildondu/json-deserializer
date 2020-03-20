@@ -4,6 +4,6 @@
 
 ## 词法分析：构造DFA
 
-![json-dfa](./resources/json-dfa.png)
+![json-dfa](resources/json-dfa.png)
 
 ## 语法分析：自顶向下递归构造AST
