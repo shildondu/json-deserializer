@@ -21,6 +21,6 @@ fun main() {
         }
     """.trimIndent()
     val tokenReader = JsonLexer().tokenizeFromString(json)
-    val astNode = JsonParser().parse(tokenReader)
-    println(astNode)
+    val jsonNode = JsonParser().parse(tokenReader)
+    println(jsonNode)
 }

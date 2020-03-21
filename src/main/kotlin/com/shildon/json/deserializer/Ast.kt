@@ -33,5 +33,10 @@ enum class AstNodeType {
     ARRAY_MEMBERS,
     ARRAY_MEMBERS2,
     KEY_VALUE,
-    VALUE
+    VALUE,
+
+    STRING,
+    NUMBER,
+    BOOLEAN,
+    NULL
 }

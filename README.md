@@ -123,3 +123,5 @@ private fun json(tokenReader: TokenReader): AstNode {
 先构建json节点，然后递归的向下构建object节点，如果object节点是null，那就构建array节点。
 
 ## 生成JsonNode：前序遍历AST
+
+基于上一步生成的AST，我们可以对它进行前序遍历，从而生成JsonNode。
