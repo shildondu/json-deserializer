@@ -84,7 +84,7 @@ private fun tokenize(bufferedReader: BufferedReader): TokenReader {
 
 ## 语法分析：自顶向下递归构造AST
 
-json的语法相对节点，对应的产生式如下：
+json的语法相对简单，对应的产生式如下：
 
 ```
 json -> object | array
